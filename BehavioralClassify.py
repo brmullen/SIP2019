@@ -4,7 +4,7 @@
 Functions for classifying behavioral states
 
 Authors: Jimmy Chen, Shreya Mantripragada, Emma Dione, Brian R. Mullen
-Date: 2019-04-06
+Date: 2019-07-03
 '''
 
 import numpy as np
@@ -23,6 +23,7 @@ from opticFlow import opticFlow as of
 import colorsys
 import wholeBrain as wb
 import cv2
+import os
 
 # FUNCTIONS
 
@@ -119,10 +120,6 @@ if __name__ == '__main__':
         help= 'Vizualize training outcome')
     args = vars(ap.parse_args())
 
-    #load the cleaned-up magnitude movie
-    h = h5('test_angs_mags.hdf5')
-    h.keys()
-
 
     #load the raw video
     # raw = wb.loadMovie('170721_07_c1-body_cam.mp4')
@@ -147,81 +144,87 @@ if __name__ == '__main__':
 
         for path in paths:
             print('Processing file:', path)
-
+            assert path.endswith('.hdf5'), 'Unknown data type.  Please load .hdf5 only'
             if path.endswith('.hdf5'):
-                assert path.endswith('_ica.hdf5') | path.endswith('_ica_reduced.hdf5'),\
-                     "Path did not end in '_ica.hdf5'"
-                savepath = path.replace('.hdf5', '_metrics.tsv')
-                savepath = savepath.replace('_reduced', '')
+                # assert path.endswith('opticFlow.hdf5'), "Path did not end in 'opticFlow.hdf5'"
+                savepath = path.replace('.hdf5', '_metrics.csv')
                 base = os.path.basename(path)
 
             print('\nLoading data to create classifier metrics\n------------------------------------------------')
             f = h5(path)
             f.print()
 
-            mov = h.load('mags')
-            angs = h.load('rot_angs')
-            start_stop = h.load('start_stop_index')
+            mov = f.load('mags')
+            angs = f.load('rot_angs')
+            start_stop = f.load('start_stop_index')
         
             #make data frame
 
+            df = pd.DataFrame()
+
+
 
             #load non-looped variables into 
-            movmean = np.mean(mov, axis=(1,2))
+            df["move_mean"] = np.mean(mov, axis=(1,2))
 
-            create_movie = False
-            movmax = np.max(mov)
-            print(movmax)
-            movmean = np.mean(mov)
-            movstd = np.std(mov)
-            for i, frame in enumerate(mov):
-                #find local maxima
-                fmax = localMaxima2d(frame)
-                fmaxl = label(fmax)
-                #create a mask
-                mask = frame.copy() * 0
-                mask[frame>0]=1
-                #seperate all local events
-                wshed = watershed(-frame, fmaxl, mask=mask)
-                #numbeer of local maxzima
-                nfmax = fmaxl.max()
-                #create precent frame to determine local event direction
-                percent = frame.copy()
-                x = [] 
-                y = []
-                u = []
-                v = []
-                if create_movie:
-                    if i== 0:
-                        a = np.zeros((angs.shape[0], angs.shape[1], angs.shape[2], 3))
-                    frame = wb.rescaleMovie(frame, low=0, high=movmax, verbose=False)
-                    cframe = np.stack((frame[:,:], frame[:,:], frame[:,:]), axis = 2).astype(np.uint8)
-                    cframe = cv2.applyColorMap(cframe, cv2.COLORMAP_HOT)
-                #get the correct angle frame
-                angframe = angs[i]
-                #find coordinates of all local maxima
-                for region in regionprops(fmaxl):
-                    x.append(region.coords[0][1])
-                    y.append(region.coords[0][0])
-                #find the weighted angle
-                for region in np.arange(1,nfmax+1,1):
-                    regionsum = np.nansum(frame[wshed==region])
-                    # print(regionsum)
-                    percent[wshed==region]/=regionsum
-                    percent[wshed==region]*=angframe[wshed==region]
-                    angle = np.nansum(percent[wshed==region])
-                    # print('Angle: ', angle)
-                    try:
-                        #find relative points to local maxima
-                        u = np.cos(np.radians(angle)) * 10
-                        v = np.sin(np.radians(angle)) * 10
-                        # print('Start: ', (int(x[region-1]),int(y[region-1])),'End: ',(int(u),int(v)))
-                        if create_movie:
-                            cframe = cv2.arrowedLine(cframe, (int(x[region-1]),int(y[region-1])), (int(x[region-1] - u), int(y[region-1] - v)), color = (255,255,255), thickness = 1)
-                    except Exception as e:
-                        print(e)
-                if create_movie:
-                    a[i] = cframe
+            df.to_csv(savepath)
+
+
+
+
+            # create_movie = False
+            # movmax = np.max(mov)
+            # print(movmax)
+            # movmean = np.mean(mov)
+            # movstd = np.std(mov)
+            # for i, frame in enumerate(mov):
+            #     #find local maxima
+            #     fmax = localMaxima2d(frame)
+            #     fmaxl = label(fmax)
+            #     #create a mask
+            #     mask = frame.copy() * 0
+            #     mask[frame>0]=1
+            #     #seperate all local events
+            #     wshed = watershed(-frame, fmaxl, mask=mask)
+            #     #numbeer of local maxzima
+            #     nfmax = fmaxl.max()
+            #     #create precent frame to determine local event direction
+            #     percent = frame.copy()
+            #     x = [] 
+            #     y = []
+            #     u = []
+            #     v = []
+            #     if create_movie:
+            #         if i== 0:
+            #             a = np.zeros((angs.shape[0], angs.shape[1], angs.shape[2], 3))
+            #         frame = wb.rescaleMovie(frame, low=0, high=movmax, verbose=False)
+            #         cframe = np.stack((frame[:,:], frame[:,:], frame[:,:]), axis = 2).astype(np.uint8)
+            #         cframe = cv2.applyColorMap(cframe, cv2.COLORMAP_HOT)
+            #     #get the correct angle frame
+            #     angframe = angs[i]
+            #     #find coordinates of all local maxima
+            #     for region in regionprops(fmaxl):
+            #         x.append(region.coords[0][1])
+            #         y.append(region.coords[0][0])
+            #     #find the weighted angle
+            #     for region in np.arange(1,nfmax+1,1):
+            #         regionsum = np.nansum(frame[wshed==region])
+            #         # print(regionsum)
+            #         percent[wshed==region]/=regionsum
+            #         percent[wshed==region]*=angframe[wshed==region]
+            #         angle = np.nansum(percent[wshed==region])
+            #         # print('Angle: ', angle)
+            #         try:
+            #             #find relative points to local maxima
+            #             u = np.cos(np.radians(angle)) * 10
+            #             v = np.sin(np.radians(angle)) * 10
+            #             # print('Start: ', (int(x[region-1]),int(y[region-1])),'End: ',(int(u),int(v)))
+            #             if create_movie:
+            #                 cframe = cv2.arrowedLine(cframe, (int(x[region-1]),int(y[region-1])), (int(x[region-1] - u), int(y[region-1] - v)), color = (255,255,255), thickness = 1)
+            #         except Exception as e:
+            #             print(e)
+            #     if create_movie:
+            #         a[i] = cframe
 
                     
             # raw = raw[start_stop[0]:start_stop[1]]
