@@ -163,9 +163,13 @@ if __name__ == '__main__':
             angs = h.load('rot_angs')
             start_stop = h.load('start_stop_index')
         
+            #make data frame
+
+
+            #load non-looped variables into 
             movmean = np.mean(mov, axis=(1,2))
 
-            create_movie = True
+            create_movie = False
             movmax = np.max(mov)
             print(movmax)
             movmean = np.mean(mov)
