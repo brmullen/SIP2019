@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+'''
+Functions for classifying behavioral states
+
+Authors: Jimmy Chen, Shreya Mantripragada, Emma Dione, Brian R. Mullen
+Date: 2019-04-06
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 from hdf5manager import hdf5manager as h5
@@ -17,29 +24,7 @@ import colorsys
 import wholeBrain as wb
 import cv2
 
-#load the cleaned-up magnitude movie
-h = h5('test_angs_mags.hdf5')
-h.keys()
-mov = h.load('mags')
-angs = h.load('rot_angs')
-start_stop = h.load('start_stop_index')
-
-#load the raw video
-raw = wb.loadMovie('170721_07_c1-body_cam.mp4')
-
-# #reshape the angles movie and rotate the angles 90 degress
-# shape = mov.shape
-# angs = angs.reshape(shape)
-# angs -= 90
-# angs[angs < 0] += 360
-
-# #mask the angles
-# mask3d = np.zeros_like(mov) * np.nan
-# mask3d[mov>0] = 1
-# angs *= mask3d
-
-#find the average movtion vectors
-movmean = np.mean(mov, axis=(1,2))
+# FUNCTIONS
 
 def getAnglemap(xydim=25):
     #creates angle maps
@@ -107,72 +92,145 @@ def localMaxima2d(array_2d):
 #     axs[i,1].axis('off')
 # plt.show()
 
-create_movie = True
-movmax = np.max(mov)
-print(movmax)
-movmean = np.mean(mov)
-movstd = np.std(mov)
-for i, frame in enumerate(mov):
-    #find local maxima
-    fmax = localMaxima2d(frame)
-    fmaxl = label(fmax)
-    #create a mask
-    mask = frame.copy() * 0
-    mask[frame>0]=1
-    #seperate all local events
-    wshed = watershed(-frame, fmaxl, mask=mask)
-    #numbeer of local maxzima
-    nfmax = fmaxl.max()
-    #create precent frame to determine local event direction
-    percent = frame.copy()
-    x = [] 
-    y = []
-    u = []
-    v = []
-    if create_movie:
-        if i== 0:
-            a = np.zeros((angs.shape[0], angs.shape[1], angs.shape[2], 3))
-        frame = wb.rescaleMovie(frame, low=0, high=movmax, verbose=False)
-        cframe = np.stack((frame[:,:], frame[:,:], frame[:,:]), axis = 2).astype(np.uint8)
-        cframe = cv2.applyColorMap(cframe, cv2.COLORMAP_HOT)
-    #get the correct angle frame
-    angframe = angs[i]
-    #find coordinates of all local maxima
-    for region in regionprops(fmaxl):
-        x.append(region.coords[0][1])
-        y.append(region.coords[0][0])
-    #find the weighted angle
-    for region in np.arange(1,nfmax+1,1):
-        regionsum = np.nansum(frame[wshed==region])
-        # print(regionsum)
-        percent[wshed==region]/=regionsum
-        percent[wshed==region]*=angframe[wshed==region]
-        angle = np.nansum(percent[wshed==region])
-        # print('Angle: ', angle)
-        try:
-            #find relative points to local maxima
-            u = np.cos(np.radians(angle)) * 10
-            v = np.sin(np.radians(angle)) * 10
-            # print('Start: ', (int(x[region-1]),int(y[region-1])),'End: ',(int(u),int(v)))
-            if create_movie:
-                cframe = cv2.arrowedLine(cframe, (int(x[region-1]),int(y[region-1])), (int(x[region-1] - u), int(y[region-1] - v)), color = (255,255,255), thickness = 1)
-        except Exception as e:
-            print(e)
-    if create_movie:
-        a[i] = cframe
+# main run
+if __name__ == '__main__':
 
+    import argparse
+    import time
+    import pandas as pd
+
+    # Argument Parsing
+    # -----------------------------------------------
+    ap = argparse.ArgumentParser()
+    ap.add_argument('-i', '--input', type = argparse.FileType('r'), 
+        nargs = '+', required = False, 
+        help = 'path to the processed ica file(s)')
+    ap.add_argument('-f', '--fps', default = 10, required = False,
+        help = 'frames per second from recordings')
+    ap.add_argument('-t','--train', action='store_true',
+        help = 'train the classifier on the newest class_metric dataframe')
+    ap.add_argument('-ud', '--updateDF', action='store_true',
+        help = 'update full classifier dataframe')
+    ap.add_argument('-uc', '--updateClass', action='store_true',
+        help = 'update class in experimental dataframe, input ica.hdf5 and ensure metrics.tsv is in the same folder')
+    ap.add_argument('-fc', '--force', action='store_true',
+        help = 'force re-calculation')
+    ap.add_argument('-p', '--plot', action='store_true',
+        help= 'Vizualize training outcome')
+    args = vars(ap.parse_args())
+
+    #load the cleaned-up magnitude movie
+    h = h5('test_angs_mags.hdf5')
+    h.keys()
+
+
+    #load the raw video
+    # raw = wb.loadMovie('170721_07_c1-body_cam.mp4')
+
+    # #reshape the angles movie and rotate the angles 90 degress
+    # shape = mov.shape
+    # angs = angs.reshape(shape)
+    # angs -= 90
+    # angs[angs < 0] += 360
+
+    # #mask the angles
+    # mask3d = np.zeros_like(mov) * np.nan
+    # mask3d[mov>0] = 1
+    # angs *= mask3d
+
+    #find the average movtion vectors
+
+    if args['input'] != None:
+        paths = [path.name for path in args['input']]
+        print('Input found:')
+        [print('\t'+path) for path in paths]
+
+        for path in paths:
+            print('Processing file:', path)
+
+            if path.endswith('.hdf5'):
+                assert path.endswith('_ica.hdf5') | path.endswith('_ica_reduced.hdf5'),\
+                     "Path did not end in '_ica.hdf5'"
+                savepath = path.replace('.hdf5', '_metrics.tsv')
+                savepath = savepath.replace('_reduced', '')
+                base = os.path.basename(path)
+
+            print('\nLoading data to create classifier metrics\n------------------------------------------------')
+            f = h5(path)
+            f.print()
+
+            mov = h.load('mags')
+            angs = h.load('rot_angs')
+            start_stop = h.load('start_stop_index')
         
-raw = raw[start_stop[0]:start_stop[1]]
-print(raw.shape)
-raw = np.stack((raw, raw, raw), axis = 3).astype(np.uint8)
-print(raw.shape)
-pad_size = (raw.shape[1] - a.shape[1])/2
+            movmean = np.mean(mov, axis=(1,2))
 
-if (pad_size%1) == 0:
-    pad = np.zeros((a.shape[0], pad_size, a.shape[2], a.shape[3]), dtype=np.uint8)
-    a = np.hstack((pad, a, pad))
-else:
-    pad = np.zeros((a.shape[0], int(pad_size + 0.5), a.shape[2], a.shape[3]), dtype=np.uint8)
-    a = np.hstack((pad, a, pad[:,1:,:,:]))
+            create_movie = True
+            movmax = np.max(mov)
+            print(movmax)
+            movmean = np.mean(mov)
+            movstd = np.std(mov)
+            for i, frame in enumerate(mov):
+                #find local maxima
+                fmax = localMaxima2d(frame)
+                fmaxl = label(fmax)
+                #create a mask
+                mask = frame.copy() * 0
+                mask[frame>0]=1
+                #seperate all local events
+                wshed = watershed(-frame, fmaxl, mask=mask)
+                #numbeer of local maxzima
+                nfmax = fmaxl.max()
+                #create precent frame to determine local event direction
+                percent = frame.copy()
+                x = [] 
+                y = []
+                u = []
+                v = []
+                if create_movie:
+                    if i== 0:
+                        a = np.zeros((angs.shape[0], angs.shape[1], angs.shape[2], 3))
+                    frame = wb.rescaleMovie(frame, low=0, high=movmax, verbose=False)
+                    cframe = np.stack((frame[:,:], frame[:,:], frame[:,:]), axis = 2).astype(np.uint8)
+                    cframe = cv2.applyColorMap(cframe, cv2.COLORMAP_HOT)
+                #get the correct angle frame
+                angframe = angs[i]
+                #find coordinates of all local maxima
+                for region in regionprops(fmaxl):
+                    x.append(region.coords[0][1])
+                    y.append(region.coords[0][0])
+                #find the weighted angle
+                for region in np.arange(1,nfmax+1,1):
+                    regionsum = np.nansum(frame[wshed==region])
+                    # print(regionsum)
+                    percent[wshed==region]/=regionsum
+                    percent[wshed==region]*=angframe[wshed==region]
+                    angle = np.nansum(percent[wshed==region])
+                    # print('Angle: ', angle)
+                    try:
+                        #find relative points to local maxima
+                        u = np.cos(np.radians(angle)) * 10
+                        v = np.sin(np.radians(angle)) * 10
+                        # print('Start: ', (int(x[region-1]),int(y[region-1])),'End: ',(int(u),int(v)))
+                        if create_movie:
+                            cframe = cv2.arrowedLine(cframe, (int(x[region-1]),int(y[region-1])), (int(x[region-1] - u), int(y[region-1] - v)), color = (255,255,255), thickness = 1)
+                    except Exception as e:
+                        print(e)
+                if create_movie:
+                    a[i] = cframe
 
-wb.playMovie(np.dstack((a[:1000], raw[:1000])))
+                    
+            # raw = raw[start_stop[0]:start_stop[1]]
+            # print(raw.shape)
+            # raw = np.stack((raw, raw, raw), axis = 3).astype(np.uint8)
+            # print(raw.shape)
+            # pad_size = (raw.shape[1] - a.shape[1])/2
+
+            # if (pad_size%1) == 0:
+            #     pad = np.zeros((a.shape[0], pad_size, a.shape[2], a.shape[3]), dtype=np.uint8)
+            #     a = np.hstack((pad, a, pad))
+            # else:
+            #     pad = np.zeros((a.shape[0], int(pad_size + 0.5), a.shape[2], a.shape[3]), dtype=np.uint8)
+            #     a = np.hstack((pad, a, pad[:,1:,:,:]))
+
+            # wb.playMovie(np.dstack((a[:1000], raw[:1000])))
