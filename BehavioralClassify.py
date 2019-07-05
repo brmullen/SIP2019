@@ -54,6 +54,68 @@ def localMaxima2d(array_2d):
     lmax = local_max ^ eroded_background
     return lmax
 
+def standardDeviation(array_3d):
+    all_deviations = []
+    x = []
+    for i, frame in enumerate(array_3d):
+        mean = np.mean(frame)
+        x.append(i)
+        deviations = []
+        for r in frame:
+            for c in range(len(r)):
+                deviations.append(((r[c]) - mean) ** 2)
+        mean1 = np.mean(deviations)
+        current_deviation = mean1 ** (1/2)
+        all_deviations.append(current_deviation)
+    plt.scatter(x, all_deviations) 
+    return all_deviations
+    
+set_dev = standardDeviation(mov)
+
+# Average magnitude in multiple dimensions
+def motionCharacterize(array3d):
+    brain_magnitude = np.zeros(array3d.shape[0])
+    for n, frame in enumerate(array3d):
+        brain_magnitude[n] = np.mean(frame)
+
+    win_size = 10
+    mag_mean = np.convolve(brain_magnitude, np.ones(win_size)/win_size, mode = 'same')
+
+    threshold = np.zeros(mag_mean.shape)
+    threshold[mag_mean > 0] = 1 
+    frame_ind = np.where(threshold == 1)
+
+    start = []
+    end = []
+    for i, frame in enumerate(frame_ind[0]):
+        if i == 0:
+            start.append(frame)
+        elif len(frame_ind[0])-1 == i:   
+            end.append(frame)
+        elif (frame + 1) != (frame_ind[0][i + 1]):
+            end.append(frame)
+            start.append(frame_ind[0][i + 1])
+            
+#     Duration of event frames in seconds
+    event_frames = (np.array(end) - np.array(start))/30
+    
+    mag_per_event = np.zeros(array3d.shape[0])
+    for i, st in enumerate(start):
+        mag_per_event[st:end[i]] = np.sum(array3d[st:end[i]])/event_frames[i]
+    
+    #   Magnitude events
+#     fig = plt.figure(figsize = (10,5))
+#     plt.plot(brain_magnitude, color='k')
+#     plt.plot(mag_mean,color='g')
+#     plt.plot(threshold,color='r')
+#     plt.ylim([0,2])
+#     plt.show()
+#     plt.plot(mag_per_event)
+#     plt.show()
+    
+    return mag_per_event
+mag_data = motionCharacterize(mov)
+
 
 # frames = [2822, 2825, 2916, 3016, 3384, 3378]
 
@@ -92,6 +154,122 @@ def localMaxima2d(array_2d):
 #     axs[i,0].axis('off')    
 #     axs[i,1].axis('off')
 # plt.show()
+
+der = np.zeros_like(dfof)*10
+# Brain Activity Boundaries
+for i, val in enumerate(dfof):
+    if i == 0 or i == dfof.shape[0]:
+        continue
+    else:
+        der[i] = val - dfof[i-1]
+der *= 10
+
+d_switch = []
+u_switch = []
+
+# Derivative of the graph by points 
+for i, val in enumerate(der):
+    if i == 0 or i == der.shape[0]:
+        continue
+    elif (val > 0) and (der[i-1] < 0):
+        u_switch.append(i)
+    elif (val < 0) and (der[i-1] > 0):
+        d_switch.append(i)
+        
+u_switch = np.array(u_switch)/10
+d_switch = np.array(d_switch)/10
+  
+time = np.arange(dfof.shape[0])/10
+
+fig, axis = plt.subplots(1,figsize = (20,5))
+
+# Line-Scatter Graph
+plt.scatter(time[der<0], der[der<0], linewidths =0.005)
+plt.scatter(time[der>0], der[der>0])
+plt.plot(time, dfof, color = 'k')
+for line in u_switch:
+    plt.axvline(x = line, color='g')
+for line in d_switch:
+    plt.axvline(line, color='r')
+plt.xlim([0,134])
+plt.show()
+
+# Average magnitude in multiple dimensions
+def motionCharacterize(array3d):
+    brain_magnitude = np.zeros(array3d.shape[0])
+    for n, frame in enumerate(array3d):
+        brain_magnitude[n] = np.mean(frame)
+
+    win_size = 10
+    mag_mean = np.convolve(brain_magnitude, np.ones(win_size)/win_size, mode = 'same')
+
+    threshold = np.zeros(mag_mean.shape)
+    threshold[mag_mean > 0] = 1 
+    frame_ind = np.where(threshold == 1)
+
+    start = []
+    end = []
+    for i, frame in enumerate(frame_ind[0]):
+        if i == 0:
+            start.append(frame)
+        elif len(frame_ind[0])-1 == i:   
+            end.append(frame)
+        elif (frame + 1) != (frame_ind[0][i + 1]):
+            end.append(frame)
+            start.append(frame_ind[0][i + 1])
+            
+#     Duration of event frames in seconds
+    event_frames = (np.array(end) - np.array(start))/30
+    
+    mag_per_event = np.zeros(array3d.shape[0])
+    duration = np.zeros(array3d.shape[0])
+    rest = np.zeros_like(duration)
+
+    for i, st in enumerate(start):
+        if i == 0:        
+            rest[:st] = st
+            rest[end[i]:start[i+1]] = start[i+1] - end[i]
+        elif i == len(start)-1:
+            rest[end[i]:] = rest.shape[0] - end[i]
+        else:
+            rest[end[i]:start[i+1]] = start[i+1] - end[i]
+        mag_per_event[st:end[i]] = np.sum(array3d[st:end[i]])/event_frames[i]
+        duration[st:end[i]] = event_frames[i]
+        
+# #     Duration intervals
+#     frame_durations = []
+#     for i in range(len(start)):
+#         interval = end[i] - start[i]
+#         frame_durations.append(interval)
+#     print(frame_durations)
+    
+    #   Magnitude events
+#     fig = plt.figure(figsize = (10,5))
+#     plt.plot(brain_magnitude, color='k')
+#     plt.plot(mag_mean,color='g')
+#     plt.plot(threshold,color='r')
+#     plt.ylim([0,2])
+#     plt.show()
+#     plt.plot(mag_per_event)
+#     plt.show()
+
+#     print(frame_durations[1])
+#     for i in frame_durations:
+#     print(dfDur)
+
+    
+    return mag_per_event, duration, rest
+dfDur = pd.DataFrame()
+
+dfDur['mag_per_event'], dfDur['duration'], dfDur['rest']= motionCharacterize(mov)
+# mag_data = motionCharacterize(mov)
+# plt.plot(dfDur['mag_per_event'])
+
+fig = plt.figure(figsize=(10,5))
+plt.plot(dfDur['duration'] * 100, label='duration')
+plt.plot(dfDur['rest'], label='rest')
+plt.legend()
+plt.show()
 
 # main run
 if __name__ == '__main__':
