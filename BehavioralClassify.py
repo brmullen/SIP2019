@@ -3,7 +3,7 @@
 '''
 Functions for classifying behavioral states
 
-Authors: Jimmy Chen, Shreya Mantripragada, Emma Dione, Brian R. Mullen
+Authors: Jimmy Chen, Shreya Mantripragada, Emma Dionne, Brian R. Mullen
 Date: 2019-07-03
 '''
 
@@ -29,6 +29,7 @@ import os
 
 def getAnglemap(xydim=25):
     #creates angle maps
+    print("entered the getAnglmap function")
     o = of(np.random.random((10,10,100)))
     o.angleMapping(xydim=xydim)
     rgb_map = o.angle_map
@@ -47,12 +48,55 @@ def getAnglemap(xydim=25):
 
 def localMaxima2d(array_2d):
     # finds local maxima of a given 2d array
+    print("entered the localMaxima2d function")
     neighborhood = np.ones((5,5))
     local_max = maximum_filter(array_2d, footprint=neighborhood)==array_2d
     background = (array_2d==0)
     eroded_background = binary_erosion(background, structure=neighborhood, border_value=1)
     lmax = local_max ^ eroded_background
     return lmax
+
+def findMeans(array_3d):
+    #finds the means of the mice movemment, given a 3d array
+    print("entered the findMeans function")
+    all_means = []
+    x = []
+    for i, frame in enumerate(array_3d):
+        all_means.append(np.mean(frame))
+        x.append(i)
+    plt.scatter(x, all_means)
+
+    return all_means 
+
+def standardDeviation(array_3d):
+    #includes 0s with the standard deviation
+    #finds the standard deviation of the mice movement, given a 3d array
+    print("entered the standardDeviation function")
+    all_deviations = []
+    x = []
+    for i, frame in enumerate(array_3d):
+        mean = np.mean(frame)
+        x.append(i)
+        deviation = 0
+        deviations = []
+        for r in frame:
+            for c in range(len(r)):
+                deviations.append((r[c] - mean) ** 2)
+        mean1 = np.mean(deviations)
+        current_deviation = mean1 ** (1/2)
+        all_deviations.append(current_deviation)
+    #plt.plot(x, all_deviations, "bo")
+    return all_deviations
+
+
+
+
+
+
+
+
+
+
 
 
 # frames = [2822, 2825, 2916, 3016, 3384, 3378]
@@ -165,7 +209,9 @@ if __name__ == '__main__':
 
 
             #load non-looped variables into 
+            
             df["move_mean"] = np.mean(mov, axis=(1,2))
+            
 
             df.to_csv(savepath)
 
