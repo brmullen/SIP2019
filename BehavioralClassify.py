@@ -591,8 +591,6 @@ if __name__ == '__main__':
             df.to_csv(savepath)
 
 
-
-
             # create_movie = False
             # movmax = np.max(mov)
             # print(movmax)
