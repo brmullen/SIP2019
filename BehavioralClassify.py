@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-
-'''
-Functions for classifying behavioral states
-
-Authors: Jimmy Chen, Shreya Mantripragada, Emma Dionne, Brian R. Mullen
-Date: 2019-07-03
-'''
-
 import numpy as np
 import matplotlib.pyplot as plt
 from hdf5manager import hdf5manager as h5
@@ -26,6 +17,13 @@ import cv2
 import os
 
 # FUNCTIONS
+
+'''
+Functions for classifying behavioral states
+
+Authors: Jimmy Chen, Shreya Mantripragada, Emma Dionne, Brian R. Mullen
+Date: 2019-07-03
+'''
 
 
 def getAnglemap(xydim=25):
@@ -446,8 +444,7 @@ def percent_error(array3d):
     for i in range(len(array3d)):
         percent_error_list.append((surface_areas[i]/(105 * 141)) * 100)
     return percent_error_list
-
-
+    
 # frames = [2822, 2825, 2916, 3016, 3384, 3378]
 
 # fig, axs = plt.subplots(len(frames), 2)
@@ -556,7 +553,7 @@ if __name__ == '__main__':
 
             df = pd.DataFrame()
 
-            #load non-looped variables into 
+            #load non-looped variables into s
             df["move_mean"] = findMeans(mov)
             df["move_standard_deviation"] = standardDeviation(mov)
             df["move_mode"] = findMode(mov)
@@ -584,11 +581,10 @@ if __name__ == '__main__':
             df["difference_between_brain_and_move"] = comparison(same_size_up(dfof, mov), findMeans(mov))
             df["difference_between_brain_and_move_first_derivative"] = comparison(same_size_up(finding_first_derivative_points(dfof), mov), findMeans(mov))
             df["difference_between_brain_and_move_second_derivative"] = comparison(same_size_up(finding_second_derivative_points(dfof), mov), findMeans(mov))
-
-
-
-
+            #u_switch, d_switch = finding_range_values(same_size_up(dfof, mov))
+            #df["range_between_max_min"] = range_of_sections(u_switch, d_switch)
             df.to_csv(savepath)
+
 
             # create_movie = False
             # movmax = np.max(mov)
