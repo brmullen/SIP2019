@@ -1,19 +1,9 @@
-#!/usr/bin/env python3
-
-'''
-Functions for classifying behavioral states
-
-Authors: Jimmy Chen, Shreya Mantripragada, Emma Dionne, Brian R. Mullen
-Date: 2019-07-03
-'''
-
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from hdf5manager import hdf5manager as h5
 import scipy.ndimage.filters as filters
 import scipy.ndimage as ndimage
-import scipy as sp
+import scipy
 from skimage.measure import label, regionprops
 from scipy.ndimage.filters import gaussian_filter, convolve
 from skimage.morphology import disk, watershed
@@ -28,9 +18,37 @@ import os
 
 # FUNCTIONS
 
-def get_Angle_map(xydim=25):
+'''
+Functions for classifying behavioral states
+
+Authors: Jimmy Chen, Shreya Mantripragada, Emma Dionne, Brian R. Mullen
+Date: 2019-07-03
+'''
+
+import numpy as np
+import matplotlib.pyplot as plt
+from hdf5manager import hdf5manager as h5
+import scipy.ndimage.filters as filters
+import scipy.ndimage as ndimage
+import scipy
+from skimage.measure import label, regionprops
+from scipy.ndimage.filters import gaussian_filter, convolve
+from skimage.morphology import disk, watershed
+from skimage.morphology import erosion, dilation, opening, closing
+from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
+from scipy.ndimage.filters import maximum_filter
+from opticFlow import opticFlow as of
+import colorsys
+import wholeBrain as wb
+import cv2
+import os
+
+# FUNCTIONS
+
+
+def getAnglemap(xydim=25):
     #creates angle maps
-    print("entered the getAnglmap function")
+    print("entered the getAnglemap function")
     o = of(np.random.random((10,10,100)))
     o.angleMapping(xydim=xydim)
     rgb_map = o.angle_map
@@ -47,7 +65,7 @@ def get_Angle_map(xydim=25):
     return rgb_map, angle_map, rot_map
 
 
-def local_Maxima_2d(array_2d):
+def localMaxima2d(array_2d):
     # finds local maxima of a given 2d array
     print("entered the localMaxima2d function")
     neighborhood = np.ones((5,5))
@@ -57,7 +75,8 @@ def local_Maxima_2d(array_2d):
     lmax = local_max ^ eroded_background
     return lmax
 
-def find_means(array_3d):
+
+def findMeans(array_3d):
     #finds the means of the mice movemment, given a 3d array
     print("entered the findMeans function")
     all_means = []
@@ -65,13 +84,11 @@ def find_means(array_3d):
     for i, frame in enumerate(array_3d):
         all_means.append(np.mean(frame))
         x.append(i)
-    #plt.scatter(x, all_means)
-
     new_means = np.around(all_means, 3)
-
     return new_means 
 
-def standard_deviation_3d(array_3d):
+
+def standardDeviation(array_3d):
     #includes 0s with the standard deviation
     #finds the standard deviation of the mice movement, given a 3d array
     print("entered the standardDeviation function")
@@ -88,47 +105,107 @@ def standard_deviation_3d(array_3d):
         mean1 = np.mean(deviations)
         current_deviation = mean1 ** (1/2)
         all_deviations.append(current_deviation)
-
-    new_all_deviations = np.around(all_deviations, 3)
-
-    #new_deviations = np.around(all)
+        new_all_deviations = np.around(all_deviations, 3)
     #plt.plot(x, all_deviations, "bo")
     return new_all_deviations
 
-def standard_deviation_2d(array_2d):
-    print("entered the standardDeviation function")
-    stand_deviat_2d = np.std(array_2d)
 
-    new_stand_deviat_2d = np.around(stand_deviat_2d, 3)
+def motionCharacterize(array3d):
+    brain_magnitude = np.zeros(array3d.shape[0])
+    for n, frame in enumerate(array3d):
+        brain_magnitude[n] = np.mean(frame)
 
-    return new_stand_deviat_2d
+    win_size = 10
+    mag_mean = np.convolve(brain_magnitude, np.ones(win_size)/win_size, mode = 'same')
 
+    threshold = np.zeros(mag_mean.shape)
+    threshold[mag_mean > 0] = 1 
+    frame_ind = np.where(threshold == 1)
 
-def same_size_down(list_1, list_2):
-    #returns the lists with the same size
-    print("entered the same_size function")
-    new_array = []
-    if (len(list_1) > len(list_2)):
-        divide = len(list_1) / len(list_2)
-        
-        if (divide > 2):
-            for i in range(len(list_2)):
-                new_array.append(list_1[i * int(np.floor(divide))])
-                
-        else: 
-            new_array = list_1[0:len(list_2)]
+    start = []
+    end = []
+    for i, frame in enumerate(frame_ind[0]):
+        if i == 0:
+            start.append(frame)
+        elif len(frame_ind[0])-1 == i:   
+            end.append(frame)
+        elif (frame + 1) != (frame_ind[0][i + 1]):
+            end.append(frame)
+            start.append(frame_ind[0][i + 1])
             
-    elif(len(list_2) > len(list_1)):
-        divide = len(list_2) / len(list_1)
-        
-        if (divide > 2):
-            for i in range(len(list_1)):
-                new_array.append(list_2[i* int(np.floor(divide))])
-                
-        else: 
-            new_array = list_2[0:len(list_1)]
-            
-    return new_array
+#     Duration of event frames in seconds
+    event_frames = (np.array(end) - np.array(start))/30
+    
+    mag_per_event = np.zeros(array3d.shape[0])
+    duration = np.zeros(array3d.shape[0])
+    rest = np.zeros_like(duration)
+
+    for i, st in enumerate(start):
+        if i == 0:        
+            rest[:st] = st
+            rest[end[i]:start[i+1]] = start[i+1] - end[i]
+        elif i == len(start)-1:
+            rest[end[i]:] = rest.shape[0] - end[i]
+        else:
+            rest[end[i]:start[i+1]] = start[i+1] - end[i]
+        mag_per_event[st:end[i]] = np.sum(array3d[st:end[i]])/event_frames[i]
+        duration[st:end[i]] = event_frames[i]
+    return mag_per_event, duration, rest
+
+
+def common_occurences(array_3d):
+   dictionary = {}
+   for i in array_3d:
+       if i in dictionary:
+           dictionary[i] += 1
+       else:
+           dictionary[i] = 1
+   return dictionary
+
+
+def same_size(list_1, list_2):
+   #returns the lists with the same size
+   new_array = []
+   if (len(list_1) > len(list_2)):
+       divide = len(list_1) / len(list_2)
+       if (divide > 2):
+           for i in range(len(list_2)):
+               new_array.append(list_1[i * int(np.floor(divide))])
+       else:
+           new_array = list_1[0:len(list_2)]
+   elif(len(list_2) > len(list_1)):
+       divide = len(list_2) / len(list_1)
+       if (divide > 2):
+           for i in range(len(list_1)):
+               new_array.append(list_2[i* int(np.floor(divide))])
+       else:
+           new_array = list_2[0:len(list_1)]
+   return new_array
+
+
+def findMode(array_3d):
+    means = findMeans(array_3d)
+    mode = common_occurences(means)
+    m = []
+    for i in means:
+        m.append(mode.get(i))
+    return m
+
+
+def findEvent(array3d):
+    means = findMeans(array3d)
+    is_event = []
+    for i in means:
+        if i > 0:
+            is_event.append(1)
+        else:
+            is_event.append(0)
+    return is_event
+
+
+def findRange(array3d):
+    return np.around(np.max(array3d, axis = (1,2)), 3)
+
 
 def same_size_up(small, big):
     scalar = len(big)/len(small)
@@ -145,44 +222,6 @@ def same_size_up(small, big):
             count += 1
     return scaled
 
-def common_occurences(array_3d):
-    #finds the mode of the magnitudes
-    print("entered the common_occurences function")
-    dictionary = {}
-    for i in array_3d:
-        if i in dictionary:
-            dictionary[i] += 1
-        else:
-            dictionary[i] = 1
-    return dictionary
-
-def find_mode(array_3d):
-    print ("entered the find_mode function")
-    means = find_means(array_3d)
-    mode = common_occurences(means)
-    m = []
-    for i in means:
-        m.append(mode.get(i))
-    return m
-
-
-
-def find_event(array3d):
-    print ("entered the find_event function")
-    means = find_means(array3d)
-    is_event = []
-    for i in means:
-        if i > 0:
-            is_event.append(1)
-        else:
-            is_event.append(0)
-    return is_event
-
-def find_range(array3d):
-    print ("entered the find_range function")
-
-    new_range = np.around(np.max(array3d, axis = (1, 2)), 3)
-    return new_range
 
 def finding_range_values(array2d): 
     print("entered the finding_range_values function")
@@ -202,6 +241,7 @@ def finding_range_values(array2d):
             
     return u_switch, d_switch, array2d
 
+
 def range_of_sections(u_switch, d_switch, array2d):
     print("entered the range_of_sections function")
     #u_switch is the list of the indices of all the maxs
@@ -212,89 +252,13 @@ def range_of_sections(u_switch, d_switch, array2d):
     return np.around(difference_list, 3)
 
 
-def total_magnitude(array3d):
-    print("entered the total_magnitude function")
-    total = np.sum(array3d)
-    return total
-
-def surface_area(array3d):
-    # Area of Motion
-    print("entered the surface_area")
-    area_count = []
-    for i in array3d:
-        count = 0
-        for r in i:
-            for c in r:
-                if c > 0:
-                    count += 1    
-        area_count.append(count)
-    return area_count
-
-def list_of_total_magnitude(array3d):
-    print("entered the list_of_total_magnitude function")
-    total = []
-    for i in array3d:
-        total.append(np.sum(i))
-    return np.around(total, 3)
-
-
-def finding_first_derivative_points_of_brain_data(array_2d): 
-    print("entered the finding_derivative_points_brain_data function")
-    der = np.zeros_like(array_2d)
-    #time = np.arange(der.shape[0])/10
-    for i in range(len(array_2d)):
-        if i == 0 or i == len(array_2d):
-            continue
-        else:
-            der[i] = array_2d[i] - array_2d[i-1]
-
-    derivative_value = []
-    for i in der:
-        derivative_value.append(i/0.1)
-
-    new_derivative_value = np.around(derivative_value, 3)
-    
-    return new_derivative_value
-
-def finding_second_derivative_points_of_brain_data(array_2d): 
-    print("entered the finding_derivative_points_brain_data function")
-    first_derivative = finding_first_derivative_points_of_brain_data(array_2d)
-    second_derivative = finding_first_derivative_points_of_brain_data(first_derivative)
-    
-    return second_derivative
-
-def finding_first_derivative_points_of_mov(array_2d): 
-    print("entered the finding_derivative_points_of_mov function")
-    der = np.zeros_like(array_2d)
-    #time = np.arange(der.shape[0])/10
-    for i in range(len(array_2d)):
-        if i == 0 or i == len(array_2d):
-            continue
-        else:
-            der[i] = array_2d[i] - array_2d[i-1]
-
-    derivative_value = []
-    for i in der:
-        derivative_value.append(i/0.1)
-
-    new_derivative_value = np.around(derivative_value, 3)
-    
-    return new_derivative_value
-
-def finding_second_derivative_points_of_mov(array_2d):
-    print("entered the finding_second_derivative_points_of_mov")
-    first_derivative = finding_first_derivative_points_of_mov(array_2d)
-    second_derivative = finding_first_derivative_points_of_mov(first_derivative)
-
-    return second_derivative
-
 def max_value_of_event(array_3d):
     #rests_events = []
     print("entered the max_value_of_event function")
     max_values = [] #final list
     events_max = [] #takes all the maximums
-    means_mov = find_means(array_3d)
-    events = find_event(array_3d)
+    means_mov = findMeans(array_3d)
+    events = findEvent(array_3d)
     i = 0
     while i < len(means_mov):
         if events[i] == 1:
@@ -321,22 +285,45 @@ def max_value_of_event(array_3d):
             event_index += 1
     return max_values
 
-def motion_percentage(array_3d):
-    print("entered the motion_percentage function")
-    total = total_magnitude(array_3d)
-    means = find_means(array_3d)
-    percentages = []
+
+def list_of_total_magnitude(array3d):
+    print("entered the list_of_total_magnitude function")
+    total = []
+    for i in array3d:
+        total.append(np.sum(i))
+    return np.around(total, 3)
+
+
+def surface_area(array3d):
+    print("entered the surface_area function")
+    area_count = []
+    for i in array3d:
+        count = 0
+        for r in i:
+            for c in r:
+                if c > 0:
+                    count += 1          
+        area_count.append(count)
+    return area_count
+
+
+def total_magnitude(array3d):
+    total = np.sum(array3d)
     
+    return total
+
+
+def motion_percentage(array_3d):
+    total = total_magnitude(array_3d)
+    means = findMeans(array_3d)
+    percentages = []
     for i in means:
         percentages.append((i/total)*100)
-
-    new_percentages = np.around(percentages, 3)
         
-    return new_percentages
+    return np.around(percentages, 3)
 
 
 def time_continuity(timecourse, forward_or_backward='forward'):
-    print("entered the time_continui function")
     continuous_limit = []
     difference_continuous = 0
     
@@ -346,7 +333,6 @@ def time_continuity(timecourse, forward_or_backward='forward'):
         print("Calculating backward continuance")
         timecourse = timecourse[::-1]
     
-    
     for i in timecourse:
         if i == 0:
             difference_continuous += 1
@@ -355,24 +341,64 @@ def time_continuity(timecourse, forward_or_backward='forward'):
             difference_continuous = 0
             continuous_limit.append(difference_continuous)
             
-            
     if forward_or_backward == 'backward':
         print("Calculating backward continuance")
         continuous_limit = continuous_limit[::-1]
-        
     
     return continuous_limit
 
 
-def difference_between_brain_data_and_mov_mean(list_1, list_2):
+def finding_first_derivative_points(array_2d): 
+    print("entered the finding_derivative_points function")
+    der = np.zeros_like(array_2d)
+    #time = np.arange(der.shape[0])/10
+    for i in range(len(array_2d)):
+        if i == 0 or i == len(array_2d):
+            continue
+        else:
+            der[i] = array_2d[i] - array_2d[i-1]
+
+    derivative_value = []
+    for i in der:
+        derivative_value.append(i/0.1)
+
+    new_derivative_value = np.around(derivative_value, 3)
+    
+    return new_derivative_value
+
+
+def finding_second_derivative_points(array_2d): 
+    print("entered the finding_second_derivative_points function")
+    first_derivative = finding_first_derivative_points(array_2d)
+    second_derivative = finding_first_derivative_points(first_derivative)
+    
+    return second_derivative
+
+
+def comparison(list_1, list_2):
+    print("entered the comparison function")
     new_list = []
     for i in range(len(list_1)):
         difference = list_1[i] - list_2[i]
         new_list.append(difference)
-
+    
     new_new_list = np.around(new_list, 3)
-            
     return new_new_list
+
+
+def standard_deviation_y(array_3d):
+    deviations = []
+    for i in range(len(array_3d)):
+        sums = []
+        for r in array_3d[i]:
+            temp = 0
+            for c in r:
+                if c != 0:
+                    temp += c
+            sums.append(temp)
+        deviations.append(np.std(sums))
+    return np.around(deviations, 3)
+
 
 def finding_distance_between_max_of_event(array_3d):
     print("entered the finding_distance_between_max_of_event function")
@@ -380,8 +406,8 @@ def finding_distance_between_max_of_event(array_3d):
     diff_values = [] #final list
     events_max = [] #takes all the maximums
     final_values = []
-    means_mov = find_means(array_3d)
-    events = find_event(array_3d)
+    means_mov = findMeans(array_3d)
+    events = findEvent(array_3d)
     i = 0
     while i < len(means_mov):
         if events[i] == 1:
@@ -402,22 +428,21 @@ def finding_distance_between_max_of_event(array_3d):
     
     event_index = 0
     index = 0
-    
     while (index < len(events)):
         if events[index] == 0:
             diff_values.append(0)
             index += 1
         else:
             while(index < len(events) and events[index] != 0):
-                if (event_index <= len(final_values) -1 ):
+                if (event_index <= len(final_values)-1):
                     diff_values.append(final_values[event_index])
                 index += 1
             event_index += 1
-            
-    diff_values.append(0)
 
-    new_diff_values = np.around(diff_values, 3)
-    return new_diff_values
+    diff_values.append(0)
+            
+    return diff_values
+
 
 def standard_deviation_x(array_3d):
     deviations = []
@@ -430,29 +455,16 @@ def standard_deviation_x(array_3d):
                     temp += r
             sums.append(temp)
         deviations.append(np.std(sums))
-    return deviations
-
-def standard_deviation_y(array_3d):
-    deviations = []
-    for i in range(len(array_3d)):
-        sums = []
-        for r in array_3d[i]:
-            temp = 0
-            for c in r:
-                if c != 0:
-                    temp += c
-            sums.append(temp)
-        deviations.append(np.std(sums))
     return np.around(deviations, 3)
 
-# forward = count up, backward = count down   
 
-# plt.plot(time_continuity(dfDur['duration'], forward_or_backward = 'backward'), label = "Backward")
-# plt.plot(time_continuity(dfDur['duration'], forward_or_backward = 'forward'), label = "Forward")
-# plt.legend()
-
+def percent_error(array3d):
+    surface_areas = surface_area(array3d)
+    percent_error_list = []
+    for i in range(len(array3d)):
+        percent_error_list.append((surface_areas[i]/(105 * 141)) * 100)
+    return percent_error_list
     
-
 # frames = [2822, 2825, 2916, 3016, 3384, 3378]
 
 # fig, axs = plt.subplots(len(frames), 2)
@@ -559,36 +571,45 @@ if __name__ == '__main__':
         
             #make data frame
 
+            dfDur = pd.DataFrame()
+
+            dfDur['mag_per_event'], dfDur['duration'], dfDur['rest']= motionCharacterize(mov)
+
             df = pd.DataFrame()
 
-            nan_lists = angs[~np.isnan(angs)]
-
+            #load non-looped variables into s
+            df["move_mean"] = findMeans(mov)
+            df["move_standard_deviation"] = standardDeviation(mov)
+            df["move_mode"] = findMode(mov)
+            df["move_range"] = findRange(mov)
+            df["move_event_or_rest"] = findEvent(mov)
+            df["move_max_value_of_event"] = max_value_of_event(mov)
+            df["move_surface_area"] = surface_area(mov)
+            df["move_total_magnitude"] = list_of_total_magnitude(mov)
+            df["move_first_derivative"] = finding_first_derivative_points(findMeans(mov))
+            df["move_second_derivative"] = finding_second_derivative_points(findMeans(mov))
+            df["move_standard_deviation_of_x"] = standard_deviation_x(mov)
+            df["move_standard_deviation_of_y"] = standard_deviation_y(mov)
+            df["move_difference_between_x_and_y_standard_deviation"] = comparison(standard_deviation_x(mov), standard_deviation_y(mov))
+            df["move_difference_between_max_of_events"] = finding_distance_between_max_of_event(mov)
+            df["move_percentage"] = motion_percentage(mov)
+            df["move_percent_error"] = percent_error(mov)
+            df["move_time_to_event"] = time_continuity(findEvent(mov), forward_or_backward='backward')
+            df["move_time_from_event"] = time_continuity(findEvent(mov))
             df["brain_data"] = np.around(same_size_up(dfof, mov), 3)
-            df["move_mean"] = find_means(mov)
-            df["move_mode"] = find_mode(mov)
-            df["move_range"] = find_range(mov)
-            df['standard_deviation_of_brain_data_2d'] = standard_deviation_2d(dfof)
-            df['standard_deviation_of_mov_3d'] = standard_deviation_3d(mov)
-            df["event_or_rest_in_body"] = find_event(mov)
-            df['event_or_rest_in_brain'] = find_event(same_size_up(dfof, mov))
+            df["brain_event_or_rest"] = findEvent(same_size_up(dfof, mov))
             u_switch, d_switch, n_array = finding_range_values(dfof)
-            df['range_between_max_min_of_brain_data'] = same_size_up(range_of_sections(u_switch, d_switch, n_array), mov)
-            df["total_magnitude"] = list_of_total_magnitude(mov)
-            df["surface_area_of_mov"] = surface_area(mov)
-            df['first_derivative_value_of_brain_data_points'] = same_size_up(finding_first_derivative_points_of_brain_data(dfof), mov)
-            df['second_derivative_value_of_brain_data_points'] = same_size_up(finding_second_derivative_points_of_brain_data(dfof), mov)
-            df['first_derivative_value_of_mov_points'] = finding_first_derivative_points_of_mov(find_means(mov))
-            df['second_derivative_value_of_mov_points']  = finding_second_derivative_points_of_mov(find_means(mov))
-            df['max_value_of_event'] = max_value_of_event(mov)
-            df['mov_percentage'] = motion_percentage(mov)
-            df['move_time_to_event'] = time_continuity(find_event(mov), forward_or_backward = 'forward')
-            df['move_time_from_event'] = time_continuity(find_event(mov), forward_or_backward = 'backward')
-            df['difference_between_brain_data_and_mov_mean'] = difference_between_brain_data_and_mov_mean(same_size_up(dfof, mov), find_means(mov))
-            df['difference_between_max_points_of_mov_event'] = finding_distance_between_max_of_event(mov)
-            df['standard_deviation_of_mov_x_coords'] = standard_deviation_x(mov)
-            df['standard_deviation_of_mov_y_coords'] =  standard_deviation_y(mov)
-
+            df["brain_range_between_max_min"] = same_size_up(range_of_sections(u_switch, d_switch, n_array), mov)
+            df["brain_first_derivative"] = same_size_up(finding_first_derivative_points(dfof), mov)
+            df["brain_second_derivative"] = same_size_up(finding_second_derivative_points(dfof), mov)
+            df["difference_between_brain_and_move"] = comparison(same_size_up(dfof, mov), findMeans(mov))
+            df["difference_between_brain_and_move_first_derivative"] = comparison(same_size_up(finding_first_derivative_points(dfof), mov), findMeans(mov))
+            df["difference_between_brain_and_move_second_derivative"] = comparison(same_size_up(finding_second_derivative_points(dfof), mov), findMeans(mov))
+            #u_switch, d_switch = finding_range_values(same_size_up(dfof, mov))
+            #df["range_between_max_min"] = range_of_sections(u_switch, d_switch)
             df.to_csv(savepath)
+
+
 
 
             # create_movie = False
