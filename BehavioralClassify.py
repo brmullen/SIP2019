@@ -1,30 +1,34 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from hdf5manager import hdf5manager as h5
-import scipy.ndimage.filters as filters
-import scipy.ndimage as ndimage
-import scipy
-from skimage.measure import label, regionprops
-from scipy.ndimage.filters import gaussian_filter, convolve
-from skimage.morphology import disk, watershed
-from skimage.morphology import erosion, dilation, opening, closing
-from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
-from scipy.ndimage.filters import maximum_filter
-from opticFlow import opticFlow as of
-import colorsys
-import wholeBrain as wb
-import cv2
-import os
-
-# FUNCTIONS
-
+#!/usr/bin/env python3
 '''
 Functions for classifying behavioral states
 
 Authors: Jimmy Chen, Shreya Mantripragada, Emma Dionne, Brian R. Mullen
 Date: 2019-07-03
 '''
+import os
+import sys
+sys.path.append('../pyWholeBrain')
+import numpy as np
+import colorsys
+import cv2
+import matplotlib.pyplot as plt
 
+import scipy
+import scipy.ndimage.filters as filters
+import scipy.ndimage as ndimage
+
+from skimage.measure import label, regionprops
+from scipy.ndimage.filters import gaussian_filter, convolve
+from skimage.morphology import disk, watershed
+from skimage.morphology import erosion, dilation, opening, closing
+
+from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
+from scipy.ndimage.filters import maximum_filter
+
+from hdf5manager import hdf5manager as h5
+import wholeBrain as wb
+
+# FUNCTIONS
 
 def getAnglemap(xydim=25):
     #creates angle maps
@@ -91,6 +95,7 @@ def standardDeviation(array_3d):
 
 
 def motionCharacterize(array3d):
+    print("entered the motionCharacterize function")
     brain_magnitude = np.zeros(array3d.shape[0])
     for n, frame in enumerate(array3d):
         brain_magnitude[n] = np.mean(frame)
@@ -133,18 +138,20 @@ def motionCharacterize(array3d):
     return mag_per_event, duration, rest
 
 
-def common_occurences(array_3d):
-   dictionary = {}
-   for i in array_3d:
-       if i in dictionary:
-           dictionary[i] += 1
-       else:
-           dictionary[i] = 1
-   return dictionary
+def commonOccurences(array_3d):
+    print("entered the commonOccurences function")
+    dictionary = {}
+    for i in array_3d:
+        if i in dictionary:
+            dictionary[i] += 1
+        else:
+            dictionary[i] = 1
+    return dictionary
 
 
-def same_size(list_1, list_2):
+def sameSize(list_1, list_2):
    #returns the lists with the same size
+   print("entered the sameSize function")
    new_array = []
    if (len(list_1) > len(list_2)):
        divide = len(list_1) / len(list_2)
@@ -164,8 +171,9 @@ def same_size(list_1, list_2):
 
 
 def findMode(array_3d):
+    print("entered the findMode function")
     means = findMeans(array_3d)
-    mode = common_occurences(means)
+    mode = commonOccurences(means)
     m = []
     for i in means:
         m.append(mode.get(i))
@@ -173,6 +181,7 @@ def findMode(array_3d):
 
 
 def findEvent(array3d):
+    print("entered the findEvent function")
     means = findMeans(array3d)
     is_event = []
     for i in means:
@@ -184,10 +193,12 @@ def findEvent(array3d):
 
 
 def findRange(array3d):
+    print("entered the findRange function")
     return np.around(np.max(array3d, axis = (1,2)), 3)
 
 
-def same_size_up(small, big):
+def sameSizeUp(small, big):
+    print("entered the sameSizeUp function")
     scalar = len(big)/len(small)
     scaled = []
     index = 0
@@ -203,8 +214,8 @@ def same_size_up(small, big):
     return scaled
 
 
-def finding_range_values(array2d): 
-    print("entered the finding_range_values function")
+def findingRangeValues(array2d): 
+    print("entered the findingRangeValues function")
     #finding the ranges of snippet of the brain data
     d_switch = [] #the decreasing part of the graph 
     u_switch = [] #the increasing part of the graph
@@ -222,8 +233,8 @@ def finding_range_values(array2d):
     return u_switch, d_switch, array2d
 
 
-def range_of_sections(u_switch, d_switch, array2d):
-    print("entered the range_of_sections function")
+def rangeOfSections(u_switch, d_switch, array2d):
+    print("entered the rangeOfSections function")
     #u_switch is the list of the indices of all the maxs
     #d_switch is the list of the indices of all the mins
     difference_list = []
@@ -232,9 +243,9 @@ def range_of_sections(u_switch, d_switch, array2d):
     return np.around(difference_list, 3)
 
 
-def max_value_of_event(array_3d):
+def maxValueOfEvent(array_3d):
     #rests_events = []
-    print("entered the max_value_of_event function")
+    print("entered the maxValueOfEvent function")
     max_values = [] #final list
     events_max = [] #takes all the maximums
     means_mov = findMeans(array_3d)
@@ -266,16 +277,16 @@ def max_value_of_event(array_3d):
     return max_values
 
 
-def list_of_total_magnitude(array3d):
-    print("entered the list_of_total_magnitude function")
+def listOfTotalMagnitude(array3d):
+    print("entered the listOfTotalMagnitude function")
     total = []
     for i in array3d:
         total.append(np.sum(i))
     return np.around(total, 3)
 
 
-def surface_area(array3d):
-    print("entered the surface_area function")
+def surfaceArea(array3d):
+    print("entered the surfaceArea function")
     area_count = []
     for i in array3d:
         count = 0
@@ -287,14 +298,16 @@ def surface_area(array3d):
     return area_count
 
 
-def total_magnitude(array3d):
+def totalMagnitude(array3d):
+    print("entered the totalMagnitude function")
     total = np.sum(array3d)
     
     return total
 
 
-def motion_percentage(array_3d):
-    total = total_magnitude(array_3d)
+def motionPercentage(array_3d):
+    print("entered the motionPercentage function")
+    total = totalMagnitude(array_3d)
     means = findMeans(array_3d)
     percentages = []
     final_percentages = []
@@ -308,7 +321,8 @@ def motion_percentage(array_3d):
     return final_percentages
 
 
-def time_continuity(timecourse, forward_or_backward='forward'):
+def timeContinuity(timecourse, forward_or_backward='forward'):
+    print("entered the timeContinuity function")
     continuous_limit = []
     difference_continuous = 0
     
@@ -333,8 +347,8 @@ def time_continuity(timecourse, forward_or_backward='forward'):
     return continuous_limit
 
 
-def finding_first_derivative_points(array_2d): 
-    print("entered the finding_derivative_points function")
+def findingFirstDerivativePoints(array_2d): 
+    print("entered the findingFirstDerivativePoints function")
     der = np.zeros_like(array_2d)
     #time = np.arange(der.shape[0])/10
     for i in range(len(array_2d)):
@@ -352,16 +366,18 @@ def finding_first_derivative_points(array_2d):
     return new_derivative_value
 
 
-def finding_second_derivative_points(array_2d): 
-    print("entered the finding_second_derivative_points function")
-    first_derivative = finding_first_derivative_points(array_2d)
-    second_derivative = finding_first_derivative_points(first_derivative)
+def findingSecondDerivativePoints(array_2d): 
+    print("entered the findingSecondDerivativePoints function")
+    first_derivative = findingFirstDerivativePoints(array_2d)
+    second_derivative = findingFirstDerivativePoints(first_derivative)
     
     return second_derivative
 
 
 def comparison(list_1, list_2):
     print("entered the comparison function")
+    print(len(list_1))
+    print(len(list_2))
     new_list = []
     for i in range(len(list_1)):
         difference = list_1[i] - list_2[i]
@@ -371,7 +387,8 @@ def comparison(list_1, list_2):
     return new_new_list
 
 
-def standard_deviation_y(array_3d):
+def standardDeviationY(array_3d):
+    print("entered the standardDeviationY function")
     deviations = []
     for i in range(len(array_3d)):
         sums = []
@@ -385,9 +402,8 @@ def standard_deviation_y(array_3d):
     return np.around(deviations, 3)
 
 
-def finding_distance_between_max_of_event(array_3d):
-    print("entered the finding_distance_between_max_of_event function")
-    
+def findingDistanceBetweenMaxOfEvent(array_3d):
+    print("entered the findingDistanceBetweenMaxOfEvent function")
     diff_values = [] #final list
     events_max = [] #takes all the maximums
     final_values = []
@@ -425,11 +441,12 @@ def finding_distance_between_max_of_event(array_3d):
             event_index += 1
 
     diff_values.append(0)
-            
+    diff_values.append(0)
     return diff_values
 
 
-def standard_deviation_x(array_3d):
+def standardDeviationX(array_3d):
+    print("entered the standardDeviationX function")
     deviations = []
     for i in range(len(array_3d)):
         sums = []
@@ -443,8 +460,9 @@ def standard_deviation_x(array_3d):
     return np.around(deviations, 3)
 
 
-def percent_error(array3d):
-    surface_areas = surface_area(array3d)
+def percentError(array3d):
+    print("entered the percentError function")
+    surface_areas = surfaceArea(array3d)
     percent_error_list = []
     for i in range(len(array3d)):
         percent_error_list.append((surface_areas[i]/(105 * 141)) * 100)
@@ -464,43 +482,101 @@ def brain_event_or_rest(array_2d):
     return is_event
 
     
-# frames = [2822, 2825, 2916, 3016, 3384, 3378]
 
-# fig, axs = plt.subplots(len(frames), 2)
-# for i, frame in enumerate(frames):
-#     f = mov[frame]
-#     fmax = localMaxima2d(f)
-#     fmaxl = label(fmax)
-#     axs[i,0].set_title('Frame {}'.format(frame))
-#     axs[i,0].imshow(f)
-#     mask = f.copy() * 0
-#     mask[f>0]=1
-#     wshed = watershed(-f, fmaxl, mask=mask)
-#     nfmax = fmaxl.max()
-#     percent = f.copy()
-#     x = []
-#     y = []
-#     u = []
-#     v = []
-#     for region in regionprops(fmaxl):
-#         x.append(region.coords[0][1])
-#         y.append(region.coords[0][0]) 
-#     for region in np.arange(1,nfmax+1,1):
-#         regionmean = np.sum(f[wshed==region])
-#         percent[wshed==region]/=regionmean
-#         percent[wshed==region]*=angs[frame, wshed==region]
-#         angle = np.sum(percent[wshed==region])
-#         u.append(np.cos(angle))
-#         v.append(np.sin(angle))
-#     print(x)
-#     print(y)
-#     print(u+x)
-#     print(u+v)
-#     axs[i,0].quiver(x,y,u,v, angles='xy', scale_units='xy', scale = 1)
-#     axs[i,1].imshow(percent)
-#     axs[i,0].axis('off')    
-#     axs[i,1].axis('off')
-# plt.show()
+def reshapeMags(mags, pnts):
+    print("enetered the reshapeMags function")
+
+    print('\tReshaping magnitudes\n')
+
+    roimask = None
+    n_components = None
+
+    gridx = np.asarray(pnts[0, :, 0, 0])
+    gridy = np.asarray(pnts[0, :, 0, 1])
+
+    xshape = np.unique(gridx).shape[0]
+    yshape = np.unique(gridy).shape[0]
+
+    if (xshape * yshape) == mags.shape[1]:
+        print('x * y is equal to vector length')
+        print('\t\txshape: ', xshape)
+        print('\t\tyshape: ', yshape)
+        print('\t\tmags.shape[1]: ', mags.shape[1])
+        shape = (mags.shape[0], yshape, xshape)
+        print("Shape of resized matrix: ", shape, type(shape))
+    else:
+        print('x * y is NOT equal to vector length')
+        print('\t\txshape: ', xshape)
+        print('\t\tyshape: ', yshape)
+        print('\t\tmags.shape[1]: ', mags.shape[1])
+
+    mov = mags.copy().astype('float64')
+    mov[np.isnan(mags)] = 0
+    mov =  mov.reshape((mov.shape[0], yshape, xshape))
+
+    return mov 
+
+
+def denoiseMags(mov, percent_noise_cuttoff = 99.99, verbose = True):
+    print("entered the denoiseMags functions")
+
+    print('\tDenoising magnitudes\n')
+
+    movtc = np.nanmean(mov, axis=(1,2))
+    #find and sort the most to least amount of motion based on the mean across the frame
+    movsortedindex = sorted(range(len(movtc)), key=lambda k: movtc[k])[::-1]
+    #make a noise matrix from frames that have little to no motion (the bottom 10% of motion of all motion vectors)
+    noise = mov[movsortedindex[int(mov.shape[0]*-.1):]]
+    #find the nosie cutoff (99.99% quantile of the all motion magnitudes in the lowest 10% of frames)
+    cutoff = np.percentile(noise, percent_noise_cuttoff)
+
+    if verbose:
+        stdev_check = np.std(mov, 0).reshape((mov.shape[1], mov.shape[2]))
+        max_check = np.max(mov, 0).reshape((mov.shape[1], mov.shape[2]))
+
+        print('std', np.min(stdev_check), np.median(stdev_check), np.mean(stdev_check), np.max(stdev_check))
+        print('max', np.min(stdev_check), np.median(max_check), np.mean(max_check), np.max(max_check))
+        print('\nNoise mean: ', np.nanmean(noise), 'Noise std: ', np.nanstd(noise))
+        print('Noise cutoff: ', cutoff)
+
+    #create thresholded mask movie
+    binmov = mov.copy().astype('uint8') * 0
+    binmov[mov>cutoff] = 1
+
+    sigma = [2, 2] #[y_dim, x_dim]
+
+    #get rid of speckles
+    selem = disk(2)
+    for i, frame in enumerate(binmov):
+        binmov[i] = opening(frame, selem=selem)
+    
+    #multiply 
+    return binmov * mov
+
+
+def smoothLocalmaxMags(mags_denoise, neighborhood = None):
+    print("entered the smoothLocalmaxMags function")
+
+    print('\tSmoothing magnitudes\n')
+
+    if neighborhood == None:
+        neighborhood = np.ones((2,2)).astype('uint8')
+    
+    lmax_mask = np.zeros_like(mags_denoise).astype('uint8')
+
+    sigma = [2, 2] #[y_dim, x_dim]
+    mov = mags_denoise.copy()
+
+    for i, frame in enumerate(mags_denoise):
+        # mov[i] = convolve(frame, weights, mode='constant')
+        mov[i] = gaussian_filter(frame, sigma, mode='constant')
+        local_max = maximum_filter(mov[i], footprint=neighborhood)==mov[i]
+        background = (mov[i]==0)
+        eroded_background = binary_erosion(background, structure=neighborhood, border_value=1)
+        lmax_mask[i] = local_max ^ eroded_background
+
+    return mov, lmax_mask
+
 
 # main run
 if __name__ == '__main__':
@@ -514,7 +590,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('-i', '--input', type = argparse.FileType('r'), 
         nargs = '+', required = False, 
-        help = 'path to the processed ica file(s)')
+        help = 'path to the processed opticFlow and videodata file(s)')
     ap.add_argument('-f', '--fps', default = 10, required = False,
         help = 'frames per second from recordings')
     ap.add_argument('-t','--train', action='store_true',
@@ -533,76 +609,108 @@ if __name__ == '__main__':
     #load the raw video
     # raw = wb.loadMovie('170721_07_c1-body_cam.mp4')
 
-    # #reshape the angles movie and rotate the angles 90 degress
-    # shape = mov.shape
-    # angs = angs.reshape(shape)
-    # angs -= 90
-    # angs[angs < 0] += 360
-
     # #mask the angles
     # mask3d = np.zeros_like(mov) * np.nan
     # mask3d[mov>0] = 1
     # angs *= mask3d
 
-    #find the average movtion vectors
 
-    if args['input'] != None:
-        paths = [path.name for path in args['input']]
-        print('Input found:')
-        [print('\t'+path) for path in paths]
+    pathlist = [path.name for path in args['input']]
+    print('{0} files found:'.format(len(pathlist)))
 
-        for path in paths:
+    for path in pathlist:
+        print('\n\n\tWorking on ' + path)
+
+        #find the average movtion vectors
+        if path.endswith('videodata.hdf5'):
+            print('Input found:')
+            print('\t'+path)
+            assert os.path.exists(path), 'Videodata file was not found!'
             print('Processing file:', path)
+            #
+            # assert path.endswith('videodata.hdf5'), "Path did not end in 'videodata.hdf5'"
+            print('\nLoading videodata to create classifier metrics\n------------------------------------------------')
+            f = h5(path)
+            print('\t loading dfof mean')
+            dfof = f.load('dfof_mean')
+
+        if path.endswith('OpticFlow.hdf5'):
+            assert os.path.exists(path), 'opticFlow file was not found!'
             assert path.endswith('.hdf5'), 'Unknown data type.  Please load .hdf5 only'
+            print('Input found:')
+            print('\t'+path)
+
+            print('Processing file:', path)
             if path.endswith('.hdf5'):
                 # assert path.endswith('opticFlow.hdf5'), "Path did not end in 'opticFlow.hdf5'"
                 savepath = path.replace('.hdf5', '_metrics.csv')
                 base = os.path.basename(path)
 
-            print('\nLoading data to create classifier metrics\n------------------------------------------------')
+            print('\nLoading optic flow data to create classifier metrics\n------------------------------------------------')
             f = h5(path)
-            f.print()
+            print('\tloading mags, angs, and pnts')
 
-            dfof = f.load('dfof')
-            mov = f.load('mags')
-            angs = f.load('rot_angs')
-            start_stop = f.load('start_stop_index')
-        
-            #make data frame
+            mags = f.load('mags')
+            angs = f.load('angs')
+            pnts = f.load('pnts')
 
-            df = pd.DataFrame()
+            mov = reshapeMags(mags, pnts)
+            mov = denoiseMags(mov, percent_noise_cuttoff = 99.99, verbose = False)
+            mov, lmax = smoothLocalmaxMags(mov)
 
-            #load non-looped variables into s
-            df["mov.mean"] = findMeans(mov)
-            df["mov.std"] = standardDeviation(mov)
-            df["mov.mode"] = findMode(mov)
-            df["mov.range"] = findRange(mov)
-            df["mov.eventrest"] = findEvent(mov)
-            df["mov.maxeventval"] = max_value_of_event(mov)
-            df["mov.surfarea"] = surface_area(mov)
-            df["mov.totalmag"] = list_of_total_magnitude(mov)
-            df["mov.firstder"] = finding_first_derivative_points(findMeans(mov))
-            df["mov.secder"] = finding_second_derivative_points(findMeans(mov))
-            df["mov.stdx"] = standard_deviation_x(mov)
-            df["mov.stdy"] = standard_deviation_y(mov)
-            df["mov.diffxystd"] = comparison(standard_deviation_x(mov), standard_deviation_y(mov))
-            df["mov.diffmaxevents"] = finding_distance_between_max_of_event(mov)
-            df["mov.percent"] = motion_percentage(mov)
-            df["mov.percenterror"] = percent_error(mov)
-            df["mov.timetoevent"] = time_continuity(findEvent(mov), forward_or_backward='backward')
-            df["move.timefromevent"] = time_continuity(findEvent(mov))
-            df["brain.data"] = np.around(same_size_up(dfof, mov), 3)
-            df["brain.eventrest"] = same_size_up(brain_event_or_rest(dfof), mov)
-            u_switch, d_switch, n_array = finding_range_values(dfof)
-            df["brain.rangemaxmin"] = same_size_up(range_of_sections(u_switch, d_switch, n_array), mov)
-            df["brain.firstder"] = same_size_up(finding_first_derivative_points(dfof), mov)
-            df["brain.secder"] = same_size_up(finding_second_derivative_points(dfof), mov)
-            df["diff.brainmov"] = comparison(same_size_up(dfof, mov), findMeans(mov))
-            df["diff.brainmovfirstder"] = comparison(same_size_up(finding_first_derivative_points(dfof), mov), findMeans(mov))
-            df["diff.brainmovsecder"] = comparison(same_size_up(finding_second_derivative_points(dfof), mov), findMeans(mov))
+            #reshape the angles movie and rotate the angles 90 degress
+            print('\tPreparing angles data')
+            shape = mov.shape
+            angs = angs.reshape(shape)
+            angs -= 90
+            angs[angs < 0] += 360
+            angs[mov == 0] = np.nan
+    
 
-            df.to_csv(savepath)
-            df.values()
+
+    print('\nCreating dataframe for metrics\n------------------------------------------------')
+    #make data frame
+    df = pd.DataFrame()
+
+    #load non-looped variables into s
+    if 'angs' in globals():
+        df['angs.stdev'] = np.nanstd(angs, axis = (1,2))
+        df['angs.mean'] = np.nanmean(angs, axis = (1,2))
+
+    if 'mov' in globals():
+        df["mov.mean"] = findMeans(mov)
+        df["mov.std"] = standardDeviation(mov)
+        df["mov.mode"] = findMode(mov)
+        df["mov.range"] = findRange(mov)
+        df["mov.eventrest"] = findEvent(mov)
+        df["mov.maxeventval"] = maxValueOfEvent(mov)
+        df["mov.surfarea"] = surfaceArea(mov)
+        df["mov.totalmag"] = listOfTotalMagnitude(mov)
+        df["mov.firstder"] = findingFirstDerivativePoints(findMeans(mov))
+        df["mov.secder"] = findingSecondDerivativePoints(findMeans(mov))
+        df["mov.stdx"] = standardDeviationX(mov)
+        df["mov.stdy"] = standardDeviationY(mov)
+        df["mov.diffxystd"] = comparison(standardDeviationX(mov), standardDeviationY(mov))
+        df["mov.diffmaxevents"] = findingDistanceBetweenMaxOfEvent(mov)
+        df["mov.percent"] = motionPercentage(mov)
+        df["mov.percenterror"] = percentError(mov)
+        df["mov.timetoevent"] = timeContinuity(findEvent(mov), forward_or_backward='backward')
+        df["move.timefromevent"] = timeContinuity(findEvent(mov))
+        df['mov.numlocmax'] = np.nansum(lmax, axis = (1,2))
+
+    if 'dfof' in globals():
+        df["brain.data"] = np.around(sameSizeUp(dfof, mov), 3)
+        df["brain.eventrest"] = findEvent(sameSizeUp(dfof, mov))
+        u_switch, d_switch, n_array = findingRangeValues(dfof)
+        df["brain.rangemaxmin"] = sameSizeUp(rangeOfSections(u_switch, d_switch, n_array), mov)
+        df["brain.firstder"] = sameSizeUp(findingFirstDerivativePoints(dfof), mov)
+        df["brain.secondder"] = sameSizeUp(findingSecondDerivativePoints(dfof), mov)
+        df["diff.brainmov"] = comparison(sameSizeUp(dfof, mov), findMeans(mov))
+        df["diff.brainmovfirstder"] = comparison(sameSizeUp(findingFirstDerivativePoints(dfof), mov), findMeans(mov))
+        df["diff.brainmovsecder"] = comparison(sameSizeUp(findingSecondDerivativePoints(dfof), mov), findMeans(mov))
+
+    
+    df.to_csv(savepath)
 
             # create_movie = False
             # movmax = np.max(mov)
