@@ -91,6 +91,7 @@ def standardDeviation(array_3d):
 
 
 def motionCharacterize(array3d):
+    print("entered the motionCharacterize function")
     brain_magnitude = np.zeros(array3d.shape[0])
     for n, frame in enumerate(array3d):
         brain_magnitude[n] = np.mean(frame)
@@ -134,17 +135,19 @@ def motionCharacterize(array3d):
 
 
 def common_occurences(array_3d):
-   dictionary = {}
-   for i in array_3d:
-       if i in dictionary:
-           dictionary[i] += 1
-       else:
-           dictionary[i] = 1
-   return dictionary
+    print("entered the common_occurences function")
+    dictionary = {}
+    for i in array_3d:
+        if i in dictionary:
+            dictionary[i] += 1
+        else:
+            dictionary[i] = 1
+    return dictionary
 
 
 def same_size(list_1, list_2):
    #returns the lists with the same size
+   print("entered the same_size function")
    new_array = []
    if (len(list_1) > len(list_2)):
        divide = len(list_1) / len(list_2)
@@ -164,6 +167,7 @@ def same_size(list_1, list_2):
 
 
 def findMode(array_3d):
+    print("entered the findMode function")
     means = findMeans(array_3d)
     mode = common_occurences(means)
     m = []
@@ -173,6 +177,7 @@ def findMode(array_3d):
 
 
 def findEvent(array3d):
+    print("entered the findEvent function")
     means = findMeans(array3d)
     is_event = []
     for i in means:
@@ -184,10 +189,12 @@ def findEvent(array3d):
 
 
 def findRange(array3d):
+    print("entered the findRange function")
     return np.around(np.max(array3d, axis = (1,2)), 3)
 
 
 def same_size_up(small, big):
+    print("entered the same_size_up function")
     scalar = len(big)/len(small)
     scaled = []
     index = 0
@@ -297,10 +304,15 @@ def motion_percentage(array_3d):
     total = total_magnitude(array_3d)
     means = findMeans(array_3d)
     percentages = []
+    final_percentages = []
     for i in means:
         percentages.append((i/total)*100)
+
+    for i in percentages:
+        final_percentages.append(i*1000)
+    final_percentages = np.around(final_percentages, 3)
         
-    return np.around(percentages, 3)
+    return final_percentages
 
 
 def time_continuity(timecourse, forward_or_backward='forward'):
@@ -443,7 +455,10 @@ def percent_error(array3d):
     percent_error_list = []
     for i in range(len(array3d)):
         percent_error_list.append((surface_areas[i]/(105 * 141)) * 100)
-    return percent_error_list
+
+    new_percent_error_list = np.around(percent_error_list, 3)
+
+    return new_percent_error_list
     
 # frames = [2822, 2825, 2916, 3016, 3384, 3378]
 
@@ -554,35 +569,36 @@ if __name__ == '__main__':
             df = pd.DataFrame()
 
             #load non-looped variables into s
-            df["move_mean"] = findMeans(mov)
-            df["move_standard_deviation"] = standardDeviation(mov)
-            df["move_mode"] = findMode(mov)
-            df["move_range"] = findRange(mov)
-            df["move_event_or_rest"] = findEvent(mov)
-            df["move_max_value_of_event"] = max_value_of_event(mov)
-            df["move_surface_area"] = surface_area(mov)
-            df["move_total_magnitude"] = list_of_total_magnitude(mov)
-            df["move_first_derivative"] = finding_first_derivative_points(findMeans(mov))
-            df["move_second_derivative"] = finding_second_derivative_points(findMeans(mov))
-            df["move_standard_deviation_of_x"] = standard_deviation_x(mov)
-            df["move_standard_deviation_of_y"] = standard_deviation_y(mov)
-            df["move_difference_between_x_and_y_standard_deviation"] = comparison(standard_deviation_x(mov), standard_deviation_y(mov))
-            df["move_difference_between_max_of_events"] = finding_distance_between_max_of_event(mov)
-            df["move_percentage"] = motion_percentage(mov)
-            df["move_percent_error"] = percent_error(mov)
-            df["move_time_to_event"] = time_continuity(findEvent(mov), forward_or_backward='backward')
-            df["move_time_from_event"] = time_continuity(findEvent(mov))
-            df["brain_data"] = np.around(same_size_up(dfof, mov), 3)
-            df["brain_event_or_rest"] = findEvent(same_size_up(dfof, mov))
-            u_switch, d_switch, n_array = finding_range_values(dfof)
-            df["brain_range_between_max_min"] = same_size_up(range_of_sections(u_switch, d_switch, n_array), mov)
-            df["brain_first_derivative"] = same_size_up(finding_first_derivative_points(dfof), mov)
-            df["brain_second_derivative"] = same_size_up(finding_second_derivative_points(dfof), mov)
-            df["difference_between_brain_and_move"] = comparison(same_size_up(dfof, mov), findMeans(mov))
-            df["difference_between_brain_and_move_first_derivative"] = comparison(same_size_up(finding_first_derivative_points(dfof), mov), findMeans(mov))
-            df["difference_between_brain_and_move_second_derivative"] = comparison(same_size_up(finding_second_derivative_points(dfof), mov), findMeans(mov))
-            #u_switch, d_switch = finding_range_values(same_size_up(dfof, mov))
-            #df["range_between_max_min"] = range_of_sections(u_switch, d_switch)
+            df["mov.mean"] = findMeans(mov)
+            df["mov.std"] = standardDeviation(mov)
+            df["mov.mode"] = findMode(mov)
+            df["mov.range"] = findRange(mov)
+            df["mov.eventrest"] = findEvent(mov)
+            df["mov.maxeventval"] = maxValueOfEvent(mov)
+            df["mov.surfarea"] = surfaceArea(mov)
+            df["mov.totalmag"] = listOfTotalMagnitude(mov)
+            df["mov.firstder"] = findingFirstDerivativePoints(findMeans(mov))
+            df["mov.secder"] = findingSecondDerivativePoints(findMeans(mov))
+            df["mov.stdx"] = standardDeviation_x(mov)
+            df["mov.stdy"] = standardDeviation_y(mov)
+            df["mov.diffxystd"] = comparison(standardDeviation_x(mov), standardDeviation_y(mov))
+            df["mov.diffmaxevents"] = findingDistanceBetweenMaxOfEvent(mov)
+            df["mov.percent"] = motionPercentage(mov)
+            df["mov.percenterror"] = percentError(mov)
+            df["mov.timetoevent"] = timeContinuity(findEvent(mov), forward_or_backward='backward')
+            df["move.timefromevent"] = timeContinuity(findEvent(mov))
+           
+           #other section
+            df["brain.data"] = np.around(sameSizeUp(dfof, mov), 3)
+            df["brain.eventrest"] = findEvent(sameSizeUp(dfof, mov))
+            u_switch, d_switch, n_array = findingRangeValues(dfof)
+            df["brain.rangemaxmin"] = sameSizeUp(rangeOfSctions(u_switch, d_switch, n_array), mov)
+            df["brain.firstder"] = sameSizeUp(findingFirstDerivativePoints(dfof), mov)
+            df["brain.secder"] = sameSizeUp(findingSecondDerivativePoints(dfof), mov)
+            df["diff.brainmov"] = comparison(sameSizeUp(dfof, mov), findMeans(mov))
+            df["diff.brainmovfirstder"] = comparison(sameSizeUp(findingFirstDerivativePoints(dfof), mov), findMeans(mov))
+            df["diff.brainmovsecder"] = comparison(sameSizeUp(findingSecondDerivativePoints(dfof), mov), findMeans(mov))
+
             df.to_csv(savepath)
 
 
