@@ -150,8 +150,7 @@ def commonOccurences(array_3d):
 
 
 def sameSize(list_1, list_2):
-   #returns the lists with the same size
-   print("entered the sameSize function")
+   print("entered the same_size function")
    new_array = []
    if (len(list_1) > len(list_2)):
        divide = len(list_1) / len(list_2)
@@ -665,8 +664,6 @@ if __name__ == '__main__':
             angs -= 90
             angs[angs < 0] += 360
             angs[mov == 0] = np.nan
-    
-
 
     print('\nCreating dataframe for metrics\n------------------------------------------------')
     #make data frame
@@ -781,4 +778,3 @@ if __name__ == '__main__':
             #     a = np.hstack((pad, a, pad[:,1:,:,:]))
 
             # wb.playMovie(np.dstack((a[:1000], raw[:1000])))
-
