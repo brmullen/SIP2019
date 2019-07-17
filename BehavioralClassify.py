@@ -667,7 +667,6 @@ if __name__ == '__main__':
             angs[mov == 0] = np.nan
     
 
-
     print('\nCreating dataframe for metrics\n------------------------------------------------')
     #make data frame
     df = pd.DataFrame()
