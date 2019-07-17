@@ -452,6 +452,17 @@ def percent_error(array3d):
     new_percent_error_list = np.around(percent_error_list, 3)
 
     return new_percent_error_list
+
+
+def brain_event_or_rest(array_2d):
+    is_event = []
+    for i in array_2d:
+        if i > 0:
+            is_event.append(1)
+        else:
+            is_event.append(0)
+    return is_event
+
     
 # frames = [2822, 2825, 2916, 3016, 3384, 3378]
 
@@ -581,7 +592,7 @@ if __name__ == '__main__':
             df["mov.timetoevent"] = time_continuity(findEvent(mov), forward_or_backward='backward')
             df["move.timefromevent"] = time_continuity(findEvent(mov))
             df["brain.data"] = np.around(same_size_up(dfof, mov), 3)
-            df["brain.eventrest"] = findEvent(same_size_up(dfof, mov))
+            df["brain.eventrest"] = same_size_up(brain_event_or_rest(dfof), mov)
             u_switch, d_switch, n_array = finding_range_values(dfof)
             df["brain.rangemaxmin"] = same_size_up(range_of_sections(u_switch, d_switch, n_array), mov)
             df["brain.firstder"] = same_size_up(finding_first_derivative_points(dfof), mov)
