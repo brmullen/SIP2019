@@ -647,6 +647,7 @@ if __name__ == '__main__':
 
             print('\nLoading optic flow data to create classifier metrics\n------------------------------------------------')
             f = h5(path)
+            print(f.head())
             print('\tloading mags, angs, and pnts')
 
             mags = f.load('mags')
@@ -706,7 +707,7 @@ if __name__ == '__main__':
         df["diff.brainmovfirstder"] = comparison(sameSizeUp(findingFirstDerivativePoints(dfof), mov), findMeans(mov))
         df["diff.brainmovsecder"] = comparison(sameSizeUp(findingSecondDerivativePoints(dfof), mov), findMeans(mov))
 
-    
+
     df.to_csv(savepath)
 
             # create_movie = False
