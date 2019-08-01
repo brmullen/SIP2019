@@ -199,12 +199,14 @@ def findRange(array3d):
 
 def sameSizeUp(small, big):
     print("entered the sameSizeUp function")
-    scalar = len(big)/len(small)
+    scalar = np.around(len(big)/len(small))
     scaled = []
     index = 0
     count = 0
     for i in range(len(big)):
-        if count >= scalar:
+        if index >= (len(small)-1):
+            scaled.append(np.nan)
+        elif count >= scalar:
             index += 1
             scaled.append(small[index])
             count = 1
@@ -310,15 +312,10 @@ def motionPercentage(array_3d):
     total = totalMagnitude(array_3d)
     means = findMeans(array_3d)
     percentages = []
-    final_percentages = []
     for i in means:
         percentages.append((i/total)*100)
-
-    for i in percentages:
-        final_percentages.append(i*1000)
-    final_percentages = np.around(final_percentages, 3)
         
-    return final_percentages
+    return np.around(percentages, 3)
 
 
 def timeContinuity(timecourse, forward_or_backward='forward'):
@@ -376,8 +373,6 @@ def findingSecondDerivativePoints(array_2d):
 
 def comparison(list_1, list_2):
     print("entered the comparison function")
-    print(len(list_1))
-    print(len(list_2))
     new_list = []
     for i in range(len(list_1)):
         difference = list_1[i] - list_2[i]
@@ -442,6 +437,10 @@ def findingDistanceBetweenMaxOfEvent(array_3d):
 
     diff_values.append(0)
     diff_values.append(0)
+    diff_values.append(0)
+    diff_values.append(0)
+    diff_values.append(0)
+    diff_values.append(0)
     return diff_values
 
 
@@ -466,21 +465,7 @@ def percentError(array3d):
     percent_error_list = []
     for i in range(len(array3d)):
         percent_error_list.append((surface_areas[i]/(105 * 141)) * 100)
-
-    new_percent_error_list = np.around(percent_error_list, 3)
-
-    return new_percent_error_list
-
-
-def brain_event_or_rest(array_2d):
-    is_event = []
-    for i in array_2d:
-        if i > 0:
-            is_event.append(1)
-        else:
-            is_event.append(0)
-    return is_event
-
+    return percent_error_list
     
 
 def reshapeMags(mags, pnts):
@@ -667,7 +652,6 @@ if __name__ == '__main__':
             angs[mov == 0] = np.nan
     
 
-
     print('\nCreating dataframe for metrics\n------------------------------------------------')
     #make data frame
     df = pd.DataFrame()
@@ -695,8 +679,9 @@ if __name__ == '__main__':
         df["mov.percent"] = motionPercentage(mov)
         df["mov.percenterror"] = percentError(mov)
         df["mov.timetoevent"] = timeContinuity(findEvent(mov), forward_or_backward='backward')
-        df["move.timefromevent"] = timeContinuity(findEvent(mov))
+        df["mov.timefromevent"] = timeContinuity(findEvent(mov))
         df['mov.numlocmax'] = np.nansum(lmax, axis = (1,2))
+        df['mov.mag_per_event'], df['mov.duration'], df['mov.btwnrest'] = motionCharacterize(mov)
 
     if 'dfof' in globals():
         df["brain.data"] = np.around(sameSizeUp(dfof, mov), 3)
@@ -711,6 +696,7 @@ if __name__ == '__main__':
 
     
     df.to_csv(savepath)
+
 
             # create_movie = False
             # movmax = np.max(mov)
@@ -781,4 +767,3 @@ if __name__ == '__main__':
             #     a = np.hstack((pad, a, pad[:,1:,:,:]))
 
             # wb.playMovie(np.dstack((a[:1000], raw[:1000])))
-
