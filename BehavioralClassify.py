@@ -7,7 +7,8 @@ Date: 2019-07-03
 '''
 import os
 import sys
-sys.path.append('../pyWholeBrain')
+sys.path.append('..')
+sys.path.append('../pywholebrain')
 import numpy as np
 import colorsys
 import cv2
@@ -647,7 +648,7 @@ if __name__ == '__main__':
 
             print('\nLoading optic flow data to create classifier metrics\n------------------------------------------------')
             f = h5(path)
-            print(f.head())
+            print(f.keys())
             print('\tloading mags, angs, and pnts')
 
             mags = f.load('mags')
@@ -689,7 +690,7 @@ if __name__ == '__main__':
         df["mov.stdx"] = standardDeviationX(mov)
         df["mov.stdy"] = standardDeviationY(mov)
         df["mov.diffxystd"] = comparison(standardDeviationX(mov), standardDeviationY(mov))
-        df["mov.diffmaxevents"] = findingDistanceBetweenMaxOfEvent(mov)
+        # df["mov.diffmaxevents"] = findingDistanceBetweenMaxOfEvent(mov)
         df["mov.percent"] = motionPercentage(mov)
         df["mov.percenterror"] = percentError(mov)
         df["mov.timetoevent"] = timeContinuity(findEvent(mov), forward_or_backward='backward')
